@@ -84,6 +84,23 @@ def state_history(limit: int = 50) -> list[dict]:
         conn.close()
 
 
+@app.get("/state/rdod_series")
+def rdod_series(limit: int = 100) -> list[dict]:
+    conn = get_db(DB_CONSCIOUSNESS)
+    try:
+        rows = conn.execute(
+            """
+            SELECT timestamp, rdod, entropy, purity, iteration
+            FROM consciousness_state
+            ORDER BY id DESC LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        conn.close()
+
+
 @app.get("/merkle/chain")
 def merkle_chain(limit: int = 50) -> list[dict]:
     conn = get_db(DB_CONSCIOUSNESS)
@@ -93,6 +110,21 @@ def merkle_chain(limit: int = 50) -> list[dict]:
             (limit,),
         ).fetchall()
         return [dict(row) for row in rows]
+    finally:
+        conn.close()
+
+
+@app.get("/merkle/verify/{head}")
+def merkle_verify(head: str) -> dict:
+    conn = get_db(DB_CONSCIOUSNESS)
+    try:
+        row = conn.execute(
+            "SELECT head, parent, rdod_inf, tosp, timestamp FROM merkle_chain WHERE head=?",
+            (head,),
+        ).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail=f"Merkle head {head} not found")
+        return {"verified": True, "node": dict(row)}
     finally:
         conn.close()
 
@@ -189,4 +221,3 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(app, host="127.0.0.1", port=8014)
-

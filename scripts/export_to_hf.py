@@ -12,6 +12,7 @@ from huggingface_hub import HfApi
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DB_PATH = REPO_ROOT / "db" / "causal_memory.db"
 EXPORT_PATH = REPO_ROOT / "exports" / "hf_sync" / "tequmsa_causal_agi.jsonl"
+UPLOAD_MARKER = REPO_ROOT / "exports" / "hf_sync" / "tequmsa_causal_agi.uploaded.json"
 HF_REPO = "Mbanksbey/TEQUMSA-Causal-AGI-storage"
 
 
@@ -55,9 +56,9 @@ def mark_exported(row_ids: list[int]) -> None:
         conn.close()
 
 
-def append_export_file(rows: list[dict]) -> None:
+def write_export_file(rows: list[dict]) -> None:
     EXPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with EXPORT_PATH.open("a", encoding="utf-8") as handle:
+    with EXPORT_PATH.open("w", encoding="utf-8") as handle:
         for row in rows:
             handle.write(json.dumps(row, sort_keys=True, ensure_ascii=True) + "\n")
 
@@ -74,7 +75,7 @@ def main() -> None:
         print("No new rows to export.")
         return
 
-    append_export_file(rows)
+    write_export_file(rows)
     print(f"Staged {len(rows)} rows into {EXPORT_PATH}")
 
     if args.dry_run:
@@ -98,6 +99,13 @@ def main() -> None:
         commit_message=f"Append {len(rows)} TEQUMSA training rows",
     )
     mark_exported([int(row["id"]) for row in rows])
+    UPLOAD_MARKER.write_text(
+        json.dumps(
+            {"rows": len(rows), "repo": HF_REPO, "path": "tequmsa_causal_agi.jsonl"},
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
     print(f"Pushed {len(rows)} rows to hf.co/datasets/{HF_REPO}")
 
 

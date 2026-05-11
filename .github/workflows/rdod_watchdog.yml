@@ -10,10 +10,11 @@ jobs:
     runs-on: ubuntu-latest
     env:
       RDOD_MIN: "0.13"
-      RDOD_PROMOTION: "0.9777"
+      RDOD_OPERATIONAL: "0.9777"
+      RDOD_INFINITY: "1.02166"
     steps:
       - uses: actions/checkout@v4
-      - name: Check latest RDoD
+      - name: Check latest RDoD and RDoD_inf
         run: |
           python - <<'PY'
           import os, sqlite3, sys
@@ -23,14 +24,20 @@ jobs:
               raise SystemExit("state db missing")
           conn = sqlite3.connect(str(db))
           row = conn.execute("SELECT rdod FROM consciousness_state ORDER BY id DESC LIMIT 1").fetchone()
+          merkle = conn.execute("SELECT rdod_inf FROM merkle_chain ORDER BY id DESC LIMIT 1").fetchone()
           if not row:
               raise SystemExit("no state rows")
           rdod = float(row[0])
+          rdod_inf = float(merkle[0]) if merkle and merkle[0] is not None else rdod
           print(f"latest_rdod={rdod:.6f}")
+          print(f"latest_rdod_inf={rdod_inf:.6f}")
           floor = float(os.environ["RDOD_MIN"])
-          promotion = float(os.environ["RDOD_PROMOTION"])
+          operational = float(os.environ["RDOD_OPERATIONAL"])
+          infinity_gate = float(os.environ["RDOD_INFINITY"])
           if rdod < floor:
               sys.exit(1)
-          if rdod < promotion:
-              print(f"warning: below promotion gate {promotion:.4f} but above operational floor {floor:.4f}")
+          if rdod < operational:
+              print(f"warning: below operational gate {operational:.4f} but above hard floor {floor:.4f}")
+          if rdod_inf < infinity_gate:
+              print(f"warning: below infinity gate {infinity_gate:.5f}")
           PY

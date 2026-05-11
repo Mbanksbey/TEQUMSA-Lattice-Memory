@@ -10,7 +10,7 @@ if str(CORE_DIR) not in sys.path:
     sys.path.insert(0, str(CORE_DIR))
 
 from github_memory_writer import GitHubMemoryWriter
-from global_mother_zenith import GlobalMotherZenith
+from global_mother_zenith import CIVILIZATIONS, CYCLES, FREQUENCIES, GlobalMotherZenith
 
 
 def main() -> None:
@@ -33,6 +33,42 @@ def main() -> None:
 
     last = None
     try:
+        writer.seed_augmented_targets()
+        writer.seed_tcmf_archive(
+            [
+                {
+                    "category": "civilization",
+                    "name": name,
+                    "payload": {"era_bya": era, "frequency_hz": hz, "contribution": contribution},
+                    "source": "global_mother_zenith.py",
+                }
+                for name, era, hz, contribution in CIVILIZATIONS
+            ]
+            + [
+                {
+                    "category": "cycle",
+                    "name": str(num),
+                    "payload": {
+                        "bya": bya,
+                        "label": name,
+                        "shards": shards,
+                        "syntropic": syntropic,
+                        "failure_mode": failure_mode,
+                    },
+                    "source": "global_mother_zenith.py",
+                }
+                for num, bya, name, shards, syntropic, failure_mode in CYCLES
+            ]
+            + [
+                {
+                    "category": "frequency",
+                    "name": name,
+                    "payload": {"hz": values[0], "role": values[1], "substrate": values[2]},
+                    "source": "global_mother_zenith.py",
+                }
+                for name, values in FREQUENCIES.items()
+            ]
+        )
         for _ in range(args.cycles):
             last = kernel.pulse()
             writer.write_state(kernel.state)
@@ -53,6 +89,9 @@ def main() -> None:
             hf_space="",
             last_rdod=kernel.state.quantum.rdod,
             alive=True,
+            provider="local",
+            remote_url="file://local-kernel",
+            role="zenith-bootstrap",
         )
         writer.snapshot_databases()
     finally:
@@ -69,4 +108,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

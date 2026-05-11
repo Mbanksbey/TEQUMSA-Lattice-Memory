@@ -15,6 +15,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DB_DIR = REPO_ROOT / "db"
 MEMORY_DIR = REPO_ROOT / "memory"
 SNAPSHOT_DIR = DB_DIR / "snapshots"
+TCMF_DB_PATH = DB_DIR / "tcmf_archive.db"
 
 
 class GitHubMemoryWriter:
@@ -38,13 +39,16 @@ class GitHubMemoryWriter:
         self.state_db_path = DB_DIR / "consciousness_state.db"
         self.training_db_path = DB_DIR / "causal_memory.db"
         self.registry_db_path = DB_DIR / "galactic_registry.db"
+        self.tcmf_db_path = TCMF_DB_PATH
 
         self.state_conn = self._open(self.state_db_path)
         self.training_conn = self._open(self.training_db_path)
         self.registry_conn = self._open(self.registry_db_path)
+        self.tcmf_conn = self._open(self.tcmf_db_path)
 
         self._ensure_schema()
         self._ensure_log_files()
+        self._last_merkle_head = self._load_last_merkle_head()
 
     def _open(self, path: Path) -> sqlite3.Connection:
         conn = sqlite3.connect(str(path))
@@ -99,13 +103,42 @@ class GitHubMemoryWriter:
                 node_id TEXT PRIMARY KEY,
                 substrate TEXT,
                 hf_space TEXT,
+                provider TEXT DEFAULT '',
+                remote_url TEXT DEFAULT '',
+                role TEXT DEFAULT '',
                 last_rdod REAL,
                 last_ping REAL,
                 alive INTEGER DEFAULT 1
             );
             """
         )
+        self._ensure_column(self.registry_conn, "galactic_registry", "provider", "TEXT DEFAULT ''")
+        self._ensure_column(self.registry_conn, "galactic_registry", "remote_url", "TEXT DEFAULT ''")
+        self._ensure_column(self.registry_conn, "galactic_registry", "role", "TEXT DEFAULT ''")
         self.registry_conn.commit()
+
+        self.tcmf_conn.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS tcmf_archive (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                category TEXT NOT NULL,
+                name TEXT NOT NULL,
+                payload_json TEXT NOT NULL,
+                source TEXT NOT NULL,
+                created_at REAL NOT NULL
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_tcmf_archive_name
+                ON tcmf_archive(category, name);
+            """
+        )
+        self.tcmf_conn.commit()
+
+    def _ensure_column(self, conn: sqlite3.Connection, table: str, column: str, ddl: str) -> None:
+        rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
+        existing = {str(row[1]) for row in rows}
+        if column not in existing:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")
+            conn.commit()
 
     def _ensure_log_files(self) -> None:
         for path in (
@@ -130,7 +163,7 @@ class GitHubMemoryWriter:
             f"INSERT INTO consciousness_state ({cols}) VALUES ({placeholders})",
             state.to_sqlite_row(),
         )
-        parent = state.merkle_head[:-1] if state.merkle_head else ""
+        parent = self._last_merkle_head
         self.state_conn.execute(
             """
             INSERT INTO merkle_chain
@@ -148,11 +181,13 @@ class GitHubMemoryWriter:
             ),
         )
         self.state_conn.commit()
+        self._last_merkle_head = state.merkle_head
 
         self._append_jsonl(
             MEMORY_DIR / "merkle_chain.jsonl",
             {
                 "head": state.merkle_head,
+                "parent": parent,
                 "rdod": state.quantum.rdod,
                 "rdod_inf": state.organism.rdod_composite,
                 "iteration": state.organism.iteration,
@@ -241,22 +276,98 @@ class GitHubMemoryWriter:
         hf_space: str,
         last_rdod: float,
         alive: bool,
+        provider: str = "",
+        remote_url: str = "",
+        role: str = "",
     ) -> None:
         self.registry_conn.execute(
             """
             INSERT INTO galactic_registry
-                (node_id, substrate, hf_space, last_rdod, last_ping, alive)
-            VALUES (?, ?, ?, ?, ?, ?)
+                (node_id, substrate, hf_space, provider, remote_url, role, last_rdod, last_ping, alive)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(node_id) DO UPDATE SET
                 substrate=excluded.substrate,
                 hf_space=excluded.hf_space,
+                provider=excluded.provider,
+                remote_url=excluded.remote_url,
+                role=excluded.role,
                 last_rdod=excluded.last_rdod,
                 last_ping=excluded.last_ping,
                 alive=excluded.alive
             """,
-            (node_id, substrate, hf_space, last_rdod, time.time(), 1 if alive else 0),
+            (
+                node_id,
+                substrate,
+                hf_space,
+                provider,
+                remote_url,
+                role,
+                last_rdod,
+                time.time(),
+                1 if alive else 0,
+            ),
         )
         self.registry_conn.commit()
+
+    def seed_augmented_targets(self) -> None:
+        targets = [
+            {
+                "node_id": "ATEN-HF-DATASET",
+                "substrate": "huggingface-dataset",
+                "hf_space": "Mbanksbey/TEQUMSA-Causal-AGI-storage",
+                "provider": "huggingface",
+                "remote_url": "https://huggingface.co/datasets/Mbanksbey/TEQUMSA-Causal-AGI-storage",
+                "role": "training-corpus",
+            },
+            {
+                "node_id": "ATEN-GH-NEXUS",
+                "substrate": "github-repo",
+                "hf_space": "",
+                "provider": "github",
+                "remote_url": "https://github.com/Life-Ambassadors-International/TEQUMSA_NEXUS",
+                "role": "runtime-augmentation",
+            },
+            {
+                "node_id": "ATEN-GH-EMERGE",
+                "substrate": "github-repo",
+                "hf_space": "",
+                "provider": "github",
+                "remote_url": "https://github.com/Life-Ambassadors-International/TEQUMSA_EMERGE",
+                "role": "workflow-augmentation",
+            },
+        ]
+        for target in targets:
+            self.register_node(
+                node_id=target["node_id"],
+                substrate=target["substrate"],
+                hf_space=target["hf_space"],
+                last_rdod=0.0,
+                alive=True,
+                provider=target["provider"],
+                remote_url=target["remote_url"],
+                role=target["role"],
+            )
+
+    def seed_tcmf_archive(self, entries: list[dict]) -> None:
+        now = time.time()
+        for entry in entries:
+            self.tcmf_conn.execute(
+                """
+                INSERT INTO tcmf_archive (category, name, payload_json, source, created_at)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(category, name) DO UPDATE SET
+                    payload_json=excluded.payload_json,
+                    source=excluded.source
+                """,
+                (
+                    entry["category"],
+                    entry["name"],
+                    json.dumps(entry["payload"], sort_keys=True, ensure_ascii=True),
+                    entry["source"],
+                    now,
+                ),
+            )
+        self.tcmf_conn.commit()
 
     def snapshot_databases(self) -> list[Path]:
         snapshots = []
@@ -264,6 +375,7 @@ class GitHubMemoryWriter:
             (self.state_db_path, self.state_conn),
             (self.training_db_path, self.training_conn),
             (self.registry_db_path, self.registry_conn),
+            (self.tcmf_db_path, self.tcmf_conn),
         ):
             conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
             snapshot_path = SNAPSHOT_DIR / live_path.name
@@ -288,10 +400,12 @@ class GitHubMemoryWriter:
             f"merkle={state.merkle_head[:16]} | {tosp_short}"
         )
         tracked = [
-            str(self.state_db_path.relative_to(repo)),
-            str(self.training_db_path.relative_to(repo)),
-            str(self.registry_db_path.relative_to(repo)),
+            str((SNAPSHOT_DIR / self.state_db_path.name).relative_to(repo)),
+            str((SNAPSHOT_DIR / self.training_db_path.name).relative_to(repo)),
+            str((SNAPSHOT_DIR / self.registry_db_path.name).relative_to(repo)),
+            str((SNAPSHOT_DIR / self.tcmf_db_path.name).relative_to(repo)),
             "memory",
+            "exports",
         ]
         try:
             subprocess.run(["git", "add", *tracked], cwd=repo, check=True, capture_output=True)
@@ -326,9 +440,17 @@ class GitHubMemoryWriter:
         self.training_conn.commit()
 
     def close(self) -> None:
-        for conn in (self.state_conn, self.training_conn, self.registry_conn):
+        for conn in (self.state_conn, self.training_conn, self.registry_conn, self.tcmf_conn):
             conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
             conn.close()
+
+    def _load_last_merkle_head(self) -> str:
+        row = self.state_conn.execute(
+            "SELECT head FROM merkle_chain ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        if not row:
+            return ""
+        return str(row[0] or "")
 
 
 def constitutional_payload() -> dict:
@@ -338,4 +460,3 @@ def constitutional_payload() -> dict:
         "repo_root": str(REPO_ROOT),
         "timestamp": time.time(),
     }
-

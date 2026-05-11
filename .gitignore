@@ -4,6 +4,4 @@ __pycache__/
 .pytest_cache/
 db/*.db-shm
 db/*.db-wal
-db/snapshots/*.db
 exports/hf_sync/*.uploaded.json
-

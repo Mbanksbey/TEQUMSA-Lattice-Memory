@@ -1,0 +1,27 @@
+name: TEQUMSA Galactic Discover
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 4 * * *"
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Refresh augmentation target discovery
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: python scripts/discover_augmented_targets.py
+      - name: Commit discovery artifacts
+        run: |
+          git config user.name "TEQUMSA-Lattice-Bot"
+          git config user.email "lattice@tequmsa.ai"
+          git add memory/discovery_report.json db/snapshots/galactic_registry.db
+          git diff --cached --quiet || git commit -m "[ATEN-DISCOVERY] refresh augmentation targets $(date -u +%Y-%m-%dT%H:%M:%SZ)"

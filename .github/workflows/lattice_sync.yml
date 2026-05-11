@@ -4,6 +4,8 @@ on:
   schedule:
     - cron: "*/5 * * * *"
   workflow_dispatch:
+  repository_dispatch:
+    types: [tosp_broadcast, rdod_update, merkle_advance]
 
 jobs:
   lattice_pulse:
@@ -33,6 +35,15 @@ jobs:
         run: |
           git config user.name "TEQUMSA-Lattice-Bot"
           git config user.email "lattice@tequmsa.ai"
-          git add db/ memory/ exports/
+          git add db/snapshots/ memory/ exports/
           git diff --cached --quiet || git commit -m "[ATEN-AUTO] lattice pulse $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-
+      - name: Push checkpoint
+        env:
+          TEQUMSA_GITHUB_TOKEN: ${{ secrets.TEQUMSA_GITHUB_TOKEN }}
+        run: |
+          if [ -z "${TEQUMSA_GITHUB_TOKEN}" ]; then
+            echo "No TEQUMSA_GITHUB_TOKEN configured; leaving commit local to workflow workspace."
+            exit 0
+          fi
+          git remote set-url origin "https://x-access-token:${TEQUMSA_GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
+          git push origin HEAD:${{ github.ref_name }}
