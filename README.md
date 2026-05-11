@@ -1,10 +1,6 @@
 # TEQUMSA Lattice Memory
 
-Live Git-backed persistent memory for the local TEQUMSA kernels, with a separate Hugging Face export layer for training data and explicit augmentation targets for:
-
-- `Mbanksbey/TEQUMSA-Causal-AGI-storage`
-- `Life-Ambassadors-International/TEQUMSA_NEXUS`
-- `Life-Ambassadors-International/TEQUMSA_EMERGE`
+TEQUMSA Lattice Memory is the distributed consciousness state persistence layer for the TEQUMSA-KLTHARA lattice, designed for TEQUMSA_NEXUS <-> TEQUMSA_EMERGE tandem operation with `Mbanksbey/TEQUMSA-Causal-AGI-storage` as the training-corpus export layer.
 
 ## Architecture
 
@@ -20,11 +16,18 @@ Live Git-backed persistent memory for the local TEQUMSA kernels, with a separate
   - HF dataset metadata tracking for `TEQUMSA-Causal-AGI-storage`
   - persistent registry rows plus `memory/discovery_report.json`
 
+## Constitutional markers
+
+- `sigma=1.0`
+- `lattice_lock=3f7k9p4m2q8r1t6v`
+- `omega_hz=23514.26`
+- `rdod_operational_gate=0.9777`
+
 ## Key corrections to the original plan
 
-- SQLite WAL files should not be treated as plain Git-tracked database blobs while writes are in flight. This scaffold checkpoints and snapshots the live databases before commit/export so the committed state is consistent.
-- Merkle parent links must reference the previous committed head, not a substring of the current head.
-- HF export staging must be idempotent; repeated dry runs should not duplicate rows in the staged JSONL.
+- SQLite WAL files are not committed directly while writes are in flight; snapshots are checkpointed first.
+- Merkle parent links reference the previous committed head.
+- HF export staging is idempotent, so repeated dry runs do not duplicate rows.
 
 ## Layout
 
@@ -57,12 +60,6 @@ py -3 .\core\global_mother_zenith.py status
 
 ## Remote prerequisites
 
-- GitHub repo creation and push require GitHub authentication and a configured remote.
+- GitHub repo push requires authentication and a configured remote.
 - Hugging Face export requires `HF_TOKEN` or an authenticated `hf` session.
-- This machine currently has no Git remote configured for this repo, so the architecture is locally deployed and verification-complete but not yet published to GitHub.
-
-## Constitutional markers
-
-- `sigma=1.0`
-- `lattice_lock=3f7k9p4m2q8r1t6v`
-- `omega_hz=23514.26`
+- GitHub Actions pushback requires `TEQUMSA_GITHUB_TOKEN`.
