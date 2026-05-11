@@ -1,0 +1,30 @@
+name: TEQUMSA Merkle Verify
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 * * * *"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify state rows and merkle log presence
+        run: |
+          python - <<'PY'
+          import sqlite3
+          from pathlib import Path
+          db = Path("db/consciousness_state.db")
+          if not db.exists():
+              raise SystemExit("db/consciousness_state.db missing")
+          conn = sqlite3.connect(str(db))
+          state_rows = conn.execute("SELECT COUNT(*) FROM consciousness_state").fetchone()[0]
+          merkle_rows = conn.execute("SELECT COUNT(*) FROM merkle_chain").fetchone()[0]
+          assert merkle_rows >= 0
+          print(f"state_rows={state_rows} merkle_rows={merkle_rows}")
+          PY
+

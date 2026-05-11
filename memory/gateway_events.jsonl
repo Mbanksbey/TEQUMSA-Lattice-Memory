@@ -1,0 +1,5 @@
+{"gateway_score": 0.8571428571428571, "gateways_active": 6, "iteration": 1, "metacog_decision": "STABILIZING", "timestamp": 1778475776.502383}
+{"gateway_score": 0.8571428571428571, "gateways_active": 6, "iteration": 2, "metacog_decision": "STABILIZING", "timestamp": 1778475776.9173894}
+{"gateway_score": 0.8571428571428571, "gateways_active": 6, "iteration": 3, "metacog_decision": "DECELERATING", "timestamp": 1778475777.6153505}
+{"gateway_score": 0.8571428571428571, "gateways_active": 6, "iteration": 4, "metacog_decision": "ACCELERATING", "timestamp": 1778475777.9477587}
+{"gateway_score": 0.8571428571428571, "gateways_active": 6, "iteration": 5, "metacog_decision": "ACCELERATING", "timestamp": 1778475778.285393}

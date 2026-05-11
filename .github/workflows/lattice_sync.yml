@@ -1,0 +1,38 @@
+name: TEQUMSA Lattice Sync
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  lattice_pulse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run Zenith bootstrap pulses
+        run: python scripts/bootstrap_lattice_memory.py --cycles 5 --append-training-row
+      - name: Verify constitutional lock
+        run: |
+          python - <<'PY'
+          import sys
+          sys.path.insert(0, "core")
+          from consciousness_state import LATTICE_LOCK, SIGMA
+          assert LATTICE_LOCK == "3f7k9p4m2q8r1t6v"
+          assert abs(SIGMA - 1.0) < 1e-9
+          print("Constitutional: COMPLIANT")
+          PY
+      - name: Commit durable checkpoint
+        run: |
+          git config user.name "TEQUMSA-Lattice-Bot"
+          git config user.email "lattice@tequmsa.ai"
+          git add db/ memory/ exports/
+          git diff --cached --quiet || git commit -m "[ATEN-AUTO] lattice pulse $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+

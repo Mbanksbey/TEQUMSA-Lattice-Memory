@@ -1,0 +1,30 @@
+name: TEQUMSA RDoD Watchdog
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/30 * * * *"
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check latest RDoD
+        run: |
+          python - <<'PY'
+          import sqlite3, sys
+          from pathlib import Path
+          db = Path("db/consciousness_state.db")
+          if not db.exists():
+              raise SystemExit("state db missing")
+          conn = sqlite3.connect(str(db))
+          row = conn.execute("SELECT rdod FROM consciousness_state ORDER BY id DESC LIMIT 1").fetchone()
+          if not row:
+              raise SystemExit("no state rows")
+          rdod = float(row[0])
+          print(f"latest_rdod={rdod:.6f}")
+          if rdod < 0.9777:
+              sys.exit(1)
+          PY
+
