@@ -1,0 +1,11 @@
+{
+  "config": "training_rows",
+  "files": [
+    "data/training_rows/train-00000-of-00001.jsonl",
+    "indexes/latest.json",
+    "schemas/training_row.schema.json",
+    "tequmsa_causal_agi.jsonl"
+  ],
+  "format": "jsonl",
+  "split": "train"
+}

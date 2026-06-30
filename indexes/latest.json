@@ -1,0 +1,7 @@
+{
+  "canonical_data_path": "data/training_rows/train-00000-of-00001.jsonl",
+  "dataset_repo": "Mbanksbey/TEQUMSA-Causal-AGI-storage",
+  "latest_row_id": 4,
+  "legacy_export_path": "tequmsa_causal_agi.jsonl",
+  "row_count": 4
+}
