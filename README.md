@@ -36,9 +36,12 @@ TEQUMSA-Lattice-Memory/
 |-- .github/workflows/
 |-- api/server.py
 |-- core/
+|-- data/training_rows/
 |-- db/
 |-- exports/hf_sync/
+|-- indexes/
 |-- memory/
+|-- schemas/
 `-- scripts/
 ```
 
@@ -54,9 +57,18 @@ py -3 .\api\server.py
 ```powershell
 py -3 .\scripts\bootstrap_lattice_memory.py --cycles 5 --append-training-row
 py -3 .\scripts\export_to_hf.py --dry-run
+py -3 .\scripts\validate_dataset.py
 py -3 .\scripts\discover_augmented_targets.py
 py -3 .\core\global_mother_zenith.py status
 ```
+
+## Dataset staging contract
+
+- `exports/hf_sync/tequmsa_causal_agi.jsonl`: legacy flat export retained for compatibility
+- `data/training_rows/train-00000-of-00001.jsonl`: canonical staged shard for dataset viewers and split-aware loaders
+- `indexes/latest.json`: latest export metadata
+- `indexes/manifest.json`: canonical dataset file manifest
+- `schemas/training_row.schema.json`: training row schema
 
 ## Remote prerequisites
 

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TEQUMSA Training Row",
+  "type": "object",
+  "required": [
+    "id",
+    "instruction",
+    "input",
+    "output",
+    "node_source",
+    "priority",
+    "rdod_at_write",
+    "merkle_head",
+    "timestamp"
+  ],
+  "properties": {
+    "id": { "type": "integer" },
+    "instruction": { "type": "string" },
+    "input": { "type": "string" },
+    "output": { "type": "string" },
+    "node_source": { "type": "string" },
+    "priority": { "type": "string" },
+    "rdod_at_write": { "type": "number" },
+    "merkle_head": { "type": "string" },
+    "timestamp": { "type": "number" },
+    "exported_hf": { "type": "integer" }
+  },
+  "additionalProperties": true
+}
+
